@@ -1,0 +1,20 @@
+name: aiweb
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: aiweb-postgres
+    restart: unless-stopped
+    env_file: .env.database
+    ports:
+      - "${DATABASE_BIND_IP:-127.0.0.1}:5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U decision -d decision"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  postgres-data:
+    name: aiweb-postgres-data
+

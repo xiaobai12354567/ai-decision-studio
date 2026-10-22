@@ -1,0 +1,6 @@
+node_modules/
+.next/
+src/generated/
+package-lock.json
+docs/赛道介绍.md
+docs/AI 个人决策推演室 · MVP 需求文档.md

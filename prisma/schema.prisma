@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model VisitorSession {
+  id        String     @id @default(cuid())
+  tokenHash String     @unique
+  expiresAt DateTime
+  decisions Decision[]
+}
+
+model Decision {
+  id             String           @id @default(cuid())
+  sessionId      String
+  session        VisitorSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  title          String
+  description    String
+  stage          String           @default("draft")
+  revision       Int              @default(0)
+  confirmedAt    DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  conditions     Condition[]
+  paths          Path[]
+  summary        Summary?
+  actions        Action[]
+  generationRuns GenerationRun[]
+  changes        DecisionChange[]
+
+  @@index([sessionId, updatedAt])
+}
+
+model Condition {
+  id                   String               @id @default(cuid())
+  decisionId           String
+  decision             Decision             @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  kind                 String
+  label                String
+  value                String
+  source               String               @default("user")
+  confirmed            Boolean              @default(false)
+  revision             Int                  @default(0)
+  pathDependencies     PathDependency[]
+  scenarioDependencies ScenarioDependency[]
+
+  @@unique([decisionId, kind])
+  @@index([decisionId])
+}
+
+model Path {
+  id                String           @id @default(cuid())
+  decisionId        String
+  decision          Decision         @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  title             String
+  benefits          String[]
+  costs             String[]
+  prerequisites     String[]
+  revision          Int              @default(0)
+  basedOnRevision   Int
+  freshness         String           @default("fresh")
+  staleReason       String?
+  deletedAt         DateTime?
+  createdAt         DateTime         @default(now())
+  scenarios         Scenario[]
+  dependencies      PathDependency[]
+  inclinedSummaries Summary[]
+
+  @@index([decisionId, deletedAt])
+}
+
+model Scenario {
+  id              String               @id @default(cuid())
+  pathId          String
+  path            Path                 @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  parentId        String?
+  parent          Scenario?            @relation("ScenarioBranches", fields: [parentId], references: [id], onDelete: Cascade)
+  children        Scenario[]           @relation("ScenarioBranches")
+  depth           Int                  @default(0)
+  timeframe       String
+  event           String
+  changes         String[]
+  difficulties    String[]
+  assumptions     String[]
+  basis           String[]
+  revision        Int                  @default(0)
+  basedOnRevision Int
+  freshness       String               @default("fresh")
+  staleReason     String?
+  createdAt       DateTime             @default(now())
+  dependencies    ScenarioDependency[]
+  feedback        Feedback[]
+
+  @@index([pathId, parentId])
+}
+
+model PathDependency {
+  pathId            String
+  path              Path      @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  conditionId       String
+  condition         Condition @relation(fields: [conditionId], references: [id], onDelete: Cascade)
+  conditionRevision Int
+
+  @@id([pathId, conditionId])
+}
+
+model ScenarioDependency {
+  scenarioId        String
+  scenario          Scenario  @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  conditionId       String
+  condition         Condition @relation(fields: [conditionId], references: [id], onDelete: Cascade)
+  conditionRevision Int
+
+  @@id([scenarioId, conditionId])
+}
+
+model Feedback {
+  id               String   @id @default(cuid())
+  scenarioId       String
+  scenario         Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  scenarioRevision Int
+  kind             String
+  text             String
+  needsReview      Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  @@index([scenarioId, createdAt])
+}
+
+model Summary {
+  id                String   @id @default(cuid())
+  decisionId        String   @unique
+  decision          Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  inclinationPathId String?
+  inclinationPath   Path?    @relation(fields: [inclinationPathId], references: [id], onDelete: SetNull)
+  reason            String
+  valuedBenefits    String[]
+  unacceptableCosts String[]
+  unknowns          String[]
+  basedOnRevision   Int
+  freshness         String   @default("fresh")
+  staleReason       String?
+  updatedAt         DateTime @updatedAt
+  actions           Action[]
+}
+
+model Action {
+  id           String         @id @default(cuid())
+  decisionId   String
+  decision     Decision       @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  summaryId    String
+  summary      Summary        @relation(fields: [summaryId], references: [id], onDelete: Cascade)
+  task         String
+  verification String
+  decisionHelp String
+  status       String         @default("candidate")
+  selectedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  results      ActionResult[]
+
+  @@index([decisionId, status])
+}
+
+model ActionResult {
+  id        String   @id @default(cuid())
+  actionId  String
+  action    Action   @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([actionId, createdAt])
+}
+
+model GenerationRun {
+  id              String    @id @default(cuid())
+  decisionId      String
+  decision        Decision  @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  requestKey      String
+  requestHash     String
+  kind            String
+  scopeId         String?
+  baseRevision    Int
+  status          String    @default("running")
+  provider        String    @default("deepseek")
+  model           String
+  promptVersion   String
+  inputSnapshot   Json
+  candidateOutput Json?
+  errorCode       String?
+  startedAt       DateTime  @default(now())
+  finishedAt      DateTime?
+
+  @@unique([decisionId, requestKey])
+  @@index([decisionId, status, startedAt])
+}
+
+model DecisionChange {
+  id         String   @id @default(cuid())
+  decisionId String
+  decision   Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  revision   Int
+  kind       String
+  entityId   String?
+  before     Json?
+  after      Json?
+  reason     String
+  createdAt  DateTime @default(now())
+
+  @@index([decisionId, revision])
+}

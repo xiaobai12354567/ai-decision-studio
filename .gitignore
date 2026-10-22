@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.env*
+!.env.example
+!.env.database.example
+.data/
+*.tsbuildinfo
+playwright-report/
+src/generated/prisma/
