@@ -3,6 +3,7 @@ node_modules/
 .env*
 !.env.example
 !.env.database.example
+!.env.docker.example
 .data/
 *.tsbuildinfo
 playwright-report/

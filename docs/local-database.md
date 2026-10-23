@@ -13,7 +13,7 @@
 
 密码随机生成，仅保存在上述 Git 忽略文件中。不要提交或截图分享这些文件。更改 env 文件不会改变已经初始化的数据卷中的数据库密码。
 
-当前 WSL 未安装 Compose 插件，因此初次启动使用 docker run。项目保留 compose.yaml 作为声明式配置，已有容器运行期间不要同时用 Compose 创建同名容器。
+当前 WSL 未安装 Compose 插件，因此初次启动使用 docker run。项目保留 compose.database.yaml 作为源码开发的数据库配置，已有容器运行期间不要同时用 Compose 创建同名容器。完整容器部署使用根目录的 compose.yml，操作见 README。
 
 本机 localhost 转发实测不可用，因此容器端口绑定 WSL 私有 IP，`.env` 的 DATABASE_URL 与 DATABASE_BIND_IP 使用相同地址。没有改动全局 WSL 配置。WSL 重启后 IP 可能变化；先执行 `wsl -d Ubuntu-22.04 -- hostname -I`，若 eth0 地址变化，需要更新这两个配置值，并使用新 IP 重建项目容器（保留 `aiweb-postgres-data` 卷）。不要仅修改连接字符串而忘记容器端口绑定，也不要删除持久化卷。
 

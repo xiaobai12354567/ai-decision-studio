@@ -1,183 +1,186 @@
-# AI 个人决策推演室 · 下一步
+# 下一步 · AI 个人决策推演室
 
-帮助用户梳理职业与城市选择，通过有限的情境探索，明确关键取舍，确定一件可执行的下一步行动。
+面向职业与城市选择的 AI 决策工作台。帮助用户整理现实条件、比较可选路径、探索可能的情境，并把取舍落实为一件可以执行和验证的下一步行动。
 
-**核心流程：**描述困境 → 确认概况 → 比较路径 → 探索情境 → 更新条件 → 总结取舍 → 选择行动 → 记录结果与回访。
+当前状态：**MVP 已实现，可本地运行和部署。**
 
-## 功能与边界
+[项目介绍](#项目介绍) · [Windows 本地运行](#windows-本地运行) · [Linux Docker 部署](#linux-docker-部署) · [配置说明](#配置说明) · [开发与验证](#开发与验证) · [常见问题](#常见问题) · [项目文档](#项目文档)
 
-- AI 整理概况、提出少量追问，用户可以编辑和确认事实。
-- 生成 2～3 条选择路径，支持新增、修改、删除和比较，最多保留 5 条。
-- 情境展示具体时间/事件、变化、困难、依据与假设，支持反馈、纠正假设和后续探索；每路径最多 6 个情境、2 层分支。
-- 修改条件后标记受影响内容，可更新情境并查看变化原因与前后差异；已有反馈保留并提示重新确认。
-- 可编辑决策总结，允许暂不选择；生成 1～3 个行动，选定一个后记录结果，并结合新信息重新总结。
-- PostgreSQL 持久化、概况防抖自动保存、乐观锁、生成请求幂等与失败保护。
+## 项目介绍
 
-目前通过匿名浏览器 Cookie 隔离数据，会话有效期 90 天并按访问续期。没有跨设备账号同步；清除 Cookie 或更换浏览器/域名后，无法通过原会话找回数据。概况的未保存草稿暂存在当前标签页的 sessionStorage；路径和总结需要点击保存。
+### 使用流程
 
-当前范围不包含医疗、法律、投资等专业决策，不自动执行用户行动。AI 情境是探索材料，不是未来预测。生成返回完整结果，暂未实现逐字流式显示或后台任务队列。
+```text
+描述困境 → 确认概况 → 比较路径 → 探索情境 → 更新条件 → 总结取舍 → 选择行动 → 记录结果与回访
+```
 
-## 技术栈与目录
+| 能力           | 说明                                                                                    |
+| -------------- | --------------------------------------------------------------------------------------- |
+| 整理决策概况   | AI 从描述中整理事实并提出少量追问，用户可以编辑、补充和确认条件。                       |
+| 比较选择路径   | 生成 2～3 条路径，比较收益、代价和前提；支持手动维护，最多保留 5 条。                   |
+| 探索具体情境   | 展示事件、变化、困难、依据与假设；支持反馈和分支探索，每条路径最多 6 个情境、2 层分支。 |
+| 随条件变化更新 | 标记受影响的内容，更新情境并展示变化原因与前后差异，保留已有反馈。                      |
+| 落实下一步行动 | 编辑决策总结，允许暂不选择；生成 1～3 个行动，选定一个后记录结果并重新评估。            |
+| 保存与恢复     | PostgreSQL 持久化，概况自动保存，路径与总结手动保存；提供版本冲突、重复生成与失败保护。 |
+
+### 技术栈
 
 | 层级     | 技术                                        |
 | -------- | ------------------------------------------- |
-| 全栈框架 | Next.js 16 App Router、React 19、TypeScript |
-| AI       | AI SDK 6、DeepSeek、Zod 输出校验            |
-| 数据库   | PostgreSQL、Prisma 7、PostgreSQL adapter    |
-| 界面     | 原生语义控件、CSS 设计变量、Lucide 图标     |
-| 测试     | Node.js test runner、tsx、独立模型测试服务  |
+| 应用框架 | Next.js 16 App Router、React 19、TypeScript |
+| AI       | AI SDK 6、DeepSeek、Zod 结构校验            |
+| 数据存储 | PostgreSQL、Prisma 7、PostgreSQL adapter    |
+| 界面     | CSS 设计变量、原生语义控件、Lucide 图标     |
+| 验证     | Node.js test runner、tsx、独立模型测试服务  |
 
-```text
-src/app/                     页面与 HTTP 接口入口
-src/features/decision/       工作台组件、请求封装、保存队列
-src/domain/decision/         校验结构、共享类型、依赖与分支规则
-src/server/ai/               模型接入、提示词、结构化生成
-src/server/services/         决策和生成工作流
-src/server/repositories/     数据访问、快照和版本更新
-src/styles/                  全局样式与工作台样式
-prisma/schema.prisma         数据表定义
-prisma/migrations/           必须随代码提交的数据库迁移
-scripts/                     启动、数据库检查、集成验证
-tests/                       业务测试与独立模型夹具
-docs/                        需求、架构与验证说明
-```
+### 当前边界
 
-## 环境要求
+应用通过匿名浏览器 Cookie 隔离数据，会话有效期为 90 天并按访问续期。当前没有账号登录和跨设备同步，清除 Cookie、更换浏览器或访问域名后，无法通过原会话找回数据。概况的未保存草稿暂存在当前标签页的 `sessionStorage`。
 
-- **Node.js 24.x**，推荐与本项目验证环境保持一致；也支持满足 Prisma 要求的 Node.js 22.12+。不要只按 Next.js 的最低版本选择 Node。
-- npm、Git。
-- PostgreSQL。推荐使用仓库中的 `postgres:17-alpine` 数据库配置，或使用可连接的托管 PostgreSQL。
-- 如使用 `compose.yaml`：安装 Docker 与 **Docker Compose v2 插件**，确保 `docker compose version` 可执行。
-- DeepSeek API 密钥。缺少密钥仍可手动创建、编辑和保存内容，AI 生成会明确报错，不返回伪造答案。
+AI 情境用于探索取舍，不是未来预测。当前不覆盖医疗、法律、投资等专业决策，不自动执行行动；生成结果完整返回，尚未提供逐字流式显示或后台任务队列。未配置模型密钥时仍可手动整理和保存，AI 生成功能会提示配置错误。
 
-需要部署 **Node.js 服务 + PostgreSQL**，不能只上传静态 HTML，也不能将应用当作静态导出站点部署。
+## Windows 本地运行
 
-## 首次克隆与本地启动
+本节使用 **Windows PowerShell 运行源码**，数据库使用仓库提供的 PostgreSQL 容器，也可以连接已有 PostgreSQL。
 
-以下命令中的 `YOUR_USERNAME` 和 `YOUR_REPOSITORY` 必须替换为实际仓库信息。仓库创建后可以把地址直接改写成真实地址。
+### 1. 准备环境并获取源码
 
-### 1. 获取项目并安装依赖
+- Node.js **24.x** 和 npm；也可使用 Node.js 22.12+ 的 22.x 版本。
+- Git。
+- Docker 和 Docker Compose v2（使用数据库容器时），或一个 Windows 可以访问的 PostgreSQL 数据库。
+- DeepSeek API 密钥（使用 AI 生成功能时）。
 
-```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-cd YOUR_REPOSITORY
+```powershell
+git clone https://github.com/xiaobai12354567/ai-decision-studio.git
+cd ai-decision-studio
 node --version
 npm ci
 ```
 
-使用提交的 `package-lock.json` 安装依赖。首次构建和数据库迁移需要开发依赖，不要在这一阶段使用 `npm ci --omit=dev`。
+以下命令均在项目根目录执行。使用仓库提交的 `package-lock.json` 安装依赖；Prisma CLI 和构建工具位于开发依赖中，此时不要使用 `--omit=dev`。
 
-### 2. 创建本机配置
+### 2. 配置数据库和模型
 
-Linux / macOS / WSL：
-
-```bash
-cp .env.example .env
-cp .env.database.example .env.database
-```
-
-Windows PowerShell：
+首次运行时创建配置文件；已有配置请直接编辑，避免覆盖：
 
 ```powershell
 Copy-Item .env.example .env
 Copy-Item .env.database.example .env.database
 ```
 
-如果配置文件已经存在，保留原文件，不要用示例覆盖自己的密钥或数据库连接。
-
-编辑 `.env.database`，将占位密码换成自己的长随机密码：
+编辑 `.env.database`，将密码占位值换成长随机字母数字密码：
 
 ```dotenv
 POSTGRES_USER=decision
 POSTGRES_DB=decision
-POSTGRES_PASSWORD=YOUR_DATABASE_PASSWORD
+POSTGRES_PASSWORD=replace_with_a_long_random_password
 ```
 
-编辑 `.env`：
+编辑 `.env`，数据库密码与上面保持一致：
 
 ```dotenv
-DATABASE_URL=postgresql://decision:YOUR_DATABASE_PASSWORD@127.0.0.1:5433/decision
-DEEPSEEK_API_KEY=YOUR_DEEPSEEK_API_KEY
+DATABASE_URL=postgresql://decision:replace_with_a_long_random_password@127.0.0.1:5433/decision
+DEEPSEEK_API_KEY=replace_with_your_deepseek_api_key
 DEEPSEEK_MODEL=deepseek-chat
 DEEPSEEK_BASE_URL=
 ```
 
-两个文件中的数据库密码必须一致；示例中的 `YOUR_...` 只是占位值。建议用长随机字母数字密码，若密码包含 `@`、`:`、`/` 等字符，需要在 DATABASE_URL 中做 URL 编码。
+使用已有数据库时，只需配置实际的 `DATABASE_URL`，可跳过 `.env.database` 和下一步的数据库容器命令。
 
-| 变量              | 用途                                                             |
-| ----------------- | ---------------------------------------------------------------- |
-| DATABASE_URL      | 必填，Prisma 和应用的 PostgreSQL 连接；生成客户端/构建时也需存在 |
-| DEEPSEEK_API_KEY  | AI 生成功能所需，只在服务端读取                                  |
-| DEEPSEEK_MODEL    | 模型名称，默认 deepseek-chat，按服务商实际可用模型调整           |
-| DEEPSEEK_BASE_URL | 可选的兼容服务地址；留空使用官方 DeepSeek，生产地址使用 HTTPS    |
-| DATABASE_BIND_IP  | 仅供下方说明的 Windows + WSL 特定环境；普通部署保持未设置        |
+### 3. 启动 PostgreSQL
 
-实际 `.env` 和 `.env.database` 已被 Git 忽略；示例文件可以提交。不要使用 `NEXT_PUBLIC_` 前缀保存密钥。
-
-### 3. 启动数据库
-
-在**新环境**的仓库目录执行：
-
-```bash
-docker compose up -d --wait postgres
-docker compose ps
-```
-
-`compose.yaml` **只启动 PostgreSQL**，没有包含应用容器。端口为宿主机 `5433` → 容器内 `5432`，数据库、用户名均为 `decision`。数据存放在 `aiweb-postgres-data` 持久化卷中。
-
-如果使用已有或托管数据库，可跳过 Docker 和 `.env.database`，直接配置自己的 DATABASE_URL。不要照搬原开发者的 WSL IP。数据库密码只在首次初始化空数据卷时生效，修改 env 文件不会自动修改已有数据库密码。
-
-### 4. 应用迁移并启动开发服务
-
-```bash
-npm run db:generate
-npm run db:deploy
-npm run db:check
-npm run dev
-```
-
-看到数据库连接成功和 Next.js `Ready` 后，访问 **http://127.0.0.1:3000**。保持终端运行，按 `Ctrl+C` 停止。
-
-`src/generated/prisma` 不进入 Git，因此新克隆必须生成客户端。使用已提交的迁移执行 `db:deploy`；`db:migrate` 仅用于开发者修改表结构后创建新迁移，不用于日常部署。不要通过重置或删除数据卷解决部署错误。
-
-### 当前作者电脑的 Windows + WSL 特例
-
-当前项目位于 `P:\chuanzhi\aiweb`，Docker 在 `Ubuntu-22.04` 中，已存在 `aiweb-postgres` 容器，其他数据库占用了 5432，因此使用 5433。
-
-本机 `.env` 已额外设置 DATABASE_BIND_IP。此情况下，`npm run dev` 会启动现有容器、检查当前 WSL 地址与数据库连接，并在开发期间保持 WSL 运行，避免 WSL 空闲退出导致创建决策返回 503。
+确认当前终端可以执行 Docker 命令：
 
 ```powershell
-cd P:\chuanzhi\aiweb
-npm run dev
+docker compose version
+docker compose -f compose.database.yaml up -d --wait postgres
+docker compose -f compose.database.yaml ps
 ```
 
-**新克隆的其他机器不需要这个特例。**普通 Linux、macOS、Docker Desktop 或托管数据库环境不设置 DATABASE_BIND_IP。现有容器运行时也不要再用 Compose 创建同名容器。本机 WSL IP 改变时，按 [WSL 数据库说明](docs/local-database.md) 同步连接地址与容器端口绑定。
+源码运行使用 [compose.database.yaml](compose.database.yaml) **只启动数据库**，配置如下：
 
-## Linux 服务器生产部署
+| 项目            | 默认值                                                   |
+| --------------- | -------------------------------------------------------- |
+| PostgreSQL 镜像 | `postgres:17-alpine`                                     |
+| 容器名          | `aiweb-postgres`                                         |
+| 连接地址        | `127.0.0.1:5433` → 容器内 `5432`                         |
+| 用户 / 数据库   | `decision` / `decision`                                  |
+| 数据卷          | `aiweb-postgres-data`，挂载到 `/var/lib/postgresql/data` |
 
-推荐拓扑：浏览器 → HTTPS 反向代理 → `127.0.0.1:3000` Node.js 应用 → PostgreSQL。`npm run start` 默认只监听本机地址，适合由同一服务器上的 Nginx 转发。
+以上连接地址适用于 Windows 能通过本机端口访问 Docker 的环境。数据库运行在另一台 Linux 主机时，`.env` 中应填写 **Windows 可以访问的 Linux 主机地址**；数据库端口也需绑定到相应网络接口，并仅允许可信来源访问。启动数据库时可在该 Linux 终端执行 `DATABASE_BIND_IP=<Linux主机IP> docker compose -f compose.database.yaml up -d --wait postgres`。普通配置无需在 Windows 的 `.env` 中设置 `DATABASE_BIND_IP`。
 
-### 1. 构建与首次运行
+该文件由原 `compose.yaml` 更名而来，保留了原有容器名和数据卷，已有数据库无需重新初始化。
 
-在服务器安装上述依赖、克隆仓库，按前文创建 `.env` 并启动数据库。然后执行：
+### 4. 初始化并启动应用
 
-```bash
-npm ci
+```powershell
 npm run db:generate
 npm run db:deploy
 npm run db:check
-npm test
-npm run build
-npm run start
+npm run dev
 ```
 
-`build` 会再次生成 Prisma 客户端。保留 `.next`、`node_modules`、`src/generated/prisma` 和运行所需配置；不要把 `.next` 或本机生成目录上传 Git 代替构建。`start` 不会管理 WSL 或启动数据库。
+数据库检查成功、开发服务显示 `Ready` 后，访问 **<http://127.0.0.1:3000>**。保持终端运行，按 `Ctrl+C` 停止应用；数据库容器独立运行。
 
-可在服务器上用 `curl -I http://127.0.0.1:3000` 检查 HTTP 服务。生产模式的会话 Cookie 为 Secure，公网浏览器应通过 HTTPS 访问，否则可能无法持续保存会话。
+`db:generate` 生成未提交到 Git 的 Prisma 客户端；`db:deploy` 应用仓库已有迁移，首次运行和后续更新均使用该命令。只有修改数据模型并创建新迁移时才使用 `db:migrate`。
 
-### 2. 配置 HTTPS 反向代理
+## Linux Docker 部署
 
-为自己的域名配置 DNS 和有效的 HTTPS 证书。以下 Nginx 示例需要替换域名及证书路径：
+仓库已提供完整部署文件，应用和 PostgreSQL 都运行在容器内。Linux 宿主机只需安装 Docker Engine 和 Docker Compose v2，无需安装 Node.js。
+
+| 文件                                       | 用途                                                 |
+| ------------------------------------------ | ---------------------------------------------------- |
+| [compose.yml](compose.yml)                 | 默认部署入口，编排应用、数据库、健康检查和自动迁移。 |
+| [Dockerfile](Dockerfile)                   | 构建生产镜像，以非 root 用户运行应用。               |
+| [.dockerignore](.dockerignore)             | 排除本机依赖、构建产物和真实环境配置。               |
+| [.env.docker.example](.env.docker.example) | Docker 部署的配置模板。                              |
+
+以下命令使用 Bash，在 Linux 上的项目根目录执行。
+
+### 1. 获取源码并配置
+
+```bash
+git clone https://github.com/xiaobai12354567/ai-decision-studio.git
+cd ai-decision-studio
+cp .env.docker.example .env
+chmod 600 .env
+```
+
+已有源码或 `.env` 时直接使用并编辑，避免重新克隆或覆盖配置。
+
+编辑 `.env`，填写以下内容；其余变量可以保持模板默认值：
+
+```dotenv
+POSTGRES_PASSWORD=replace_with_a_long_random_alphanumeric_password
+DEEPSEEK_API_KEY=replace_with_your_deepseek_api_key
+```
+
+`POSTGRES_PASSWORD` 必填，请使用长随机字母数字密码，例如通过 `openssl rand -hex 24` 生成。Compose 会自动拼接数据库连接地址，因此密码不应包含 `@`、`:`、`/` 等 URL 特殊字符。`DEEPSEEK_API_KEY` 可以留空，此时仍可手动整理和保存。
+
+Docker 部署只使用这一份 `.env`，无需创建 `.env.database`，也无需填写 `DATABASE_URL`。Compose 从 `POSTGRES_*` 生成应用的容器内连接地址，从同一文件读取模型配置。
+
+### 2. 一条命令启动
+
+```bash
+docker compose up -d --build --wait --wait-timeout 180
+```
+
+此命令会构建镜像、启动并等待 PostgreSQL 就绪，随后自动执行 `prisma migrate deploy`，迁移成功后启动应用，并等待应用 HTTP 健康检查通过。首次部署和后续更新均使用同一命令。
+
+默认部署配置：
+
+- 应用仅发布到宿主机 **`127.0.0.1:3000`**；修改 `.env` 中的 `APP_PORT` 可更换宿主机端口。
+- 应用通过 Compose 内网的 **`postgres:5432`** 连接数据库，数据库不向宿主机发布端口。
+- 数据保存在 **`aiweb-production_postgres-data`** 命名卷中，与源码运行的数据库卷独立。
+- 密钥只在容器运行时注入，不需要作为构建参数传入。
+
+应用健康检查请求 `/api/status`，确认 HTTP 服务已响应。该接口仅显示模型和数据库变量是否配置，不代表数据库持续连通或模型调用成功；需要验证数据库读写时执行 `docker compose exec app npm run db:check`。
+
+**公网访问还需配置 HTTPS 入口。** 生产模式的会话 Cookie 带有 `Secure` 属性，通过普通 HTTP 公网访问可能无法维持会话。
+
+### 3. 配置 HTTPS 入口
+
+将域名解析到服务器，准备证书，并在宿主机 Nginx 中加入站点配置。替换以下域名、证书路径；若修改了 `APP_PORT`，同步修改 `proxy_pass` 的端口。
 
 ```nginx
 server {
@@ -205,151 +208,136 @@ server {
 }
 ```
 
-写接口校验浏览器 Origin 与 Host，代理必须保留原始 Host（含自定义端口），并正常传递 Cookie / Set-Cookie。不要缓存决策 API 响应。AI 调用有 85 秒总期限，反向代理或托管平台的请求期限应留出数据库处理余量，例如 120 秒。
-
-### 3. 让服务持续运行
-
-手动执行 `npm run start` 只会在当前进程运行期间提供服务。可使用 Linux systemd 管理进程，以下 `/etc/systemd/system/decision-studio.service` 为示例：
-
-```ini
-[Unit]
-Description=AI Decision Studio
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=deploy
-WorkingDirectory=/srv/ai-decision-studio
-Environment=NODE_ENV=production
-ExecStartPre=/usr/bin/npm run db:check
-ExecStart=/usr/bin/npm run start
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-将 `deploy`、项目绝对路径与 npm 路径改为实际值，npm 路径可用 `command -v npm` 查看；确保该用户可读取 `.env`、构建产物及依赖，且数据库已运行。如果使用 nvm 等安装方式，还要通过服务的 `Environment=PATH=...` 包含实际 Node.js 可执行目录。然后执行：
+确认该配置被 Nginx 主配置加载，然后检查并重载：
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now decision-studio
-sudo systemctl status decision-studio
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
-当前没有应用 Dockerfile。如后续把应用也放入容器，同一 Compose 网络下数据库应使用 `postgres:5432`，应用监听需改为 `0.0.0.0`，不能直接沿用宿主机的 `127.0.0.1:5433` 连接。
+开放 80、443 端口，通过 `https://你的域名` 创建决策、保存并刷新，验证会话和持久化；配置密钥后再测试一次 AI 生成。
 
-### 4. 后续发布更新
+代理需保留原始 `Host`（含自定义端口）和 Cookie，不缓存业务 API。应用会校验请求来源；AI 调用总期限为 85 秒，以上代理超时设置为 120 秒。
 
-先备份数据库。在项目目录拉取已提交的更新并构建：
+### 4. 日常运维与更新
+
+以下命令按需执行：
+
+```bash
+docker compose ps
+docker compose logs -f --tail=100 app
+docker compose restart app
+docker compose down
+```
+
+`down` 保留数据库卷；**不要添加 `-v`**，该参数会删除数据库卷。修改 `.env` 后运行 `docker compose up -d --build --wait --wait-timeout 180` 重新创建受影响的容器，`restart` 不会加载新环境变量。
+
+数据库密码仅在空卷首次初始化时生效。已有数据时修改 `.env` 不会改变数据库内的密码，需要先修改数据库角色密码，再同步配置。
+
+发布更新前先备份数据库。以下命令将备份写到当前目录：
+
+```bash
+docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "decision-$(date +%Y%m%d-%H%M%S).dump"
+```
+
+确认命令成功，将备份保存在独立位置并定期验证恢复。随后在维护窗口内更新：
 
 ```bash
 git pull --ff-only
-npm ci
-npm run db:generate
-npm run db:deploy
-npm run db:check
-npm run build
-sudo systemctl restart decision-studio
+docker compose up -d --build --wait --wait-timeout 180
 ```
 
-这是单实例、允许维护窗口的发布方式，更新依赖与构建期间可能影响运行中的服务；不是零停机部署。正式部署还需结合实际环境配置入口限流、数据库备份和服务日志。当前已有按会话的生成额度，但新会话可绕过该额度。
+启动等待最多 180 秒，超时后查看日志定位问题。当前配置部署单个应用实例，更新时会短暂停机。新实例先执行数据库迁移，失败时不会启动 Next.js；查看 `docker compose logs --tail=100 app` 修复后重新运行启动命令。回退应用镜像不会自动回退数据库结构，回滚需结合迁移兼容性和备份处理。
 
-## 测试与常见问题
+## 配置说明
 
-| 命令                     | 作用                                                                              |
-| ------------------------ | --------------------------------------------------------------------------------- |
-| npm test                 | 条件依赖传播和分支边界单元测试                                                    |
-| npm run typecheck        | TypeScript 检查；首次先生成 Prisma 客户端                                         |
-| npm run build            | 生产构建                                                                          |
-| npm run db:check         | 实际数据库认证、读写与中文往返验证                                                |
-| npm run test:integration | 基础接口测试，需要本地 3000 服务及数据库                                          |
-| npm run test:workflows   | 先 build；自动使用 3001/4010 的隔离测试服务验证完整流程，结束后清理专用数据和进程 |
-| npm run test:live-ai     | 默认跳过；需显式设置 RUN_LIVE_AI_CHECK=1 才会发送合成案例到真实模型               |
+配置文件都位于项目根目录，真实 `.env`、`.env.database` 已被 Git 忽略。密钥仅供服务端读取，不使用 `NEXT_PUBLIC_` 前缀。
 
-真实模型扩展测试另设置 `RUN_LIVE_WORKFLOW_CHECK=1`，会产生正常 API 调用费用。自动工作流测试不使用真实模型密钥。详细执行结果见 [验证记录](docs/verification.md)。
+| 运行方式                 | 配置来源                                  | 需要填写                                                                        |
+| ------------------------ | ----------------------------------------- | ------------------------------------------------------------------------------- |
+| Windows 源码             | `.env.example` → `.env`                   | `DATABASE_URL` 和模型配置。                                                     |
+| Windows 源码的数据库容器 | `.env.database.example` → `.env.database` | `POSTGRES_USER`、`POSTGRES_DB`、`POSTGRES_PASSWORD`，与 `.env` 的连接地址一致。 |
+| Linux Docker             | `.env.docker.example` → `.env`            | `POSTGRES_*`、模型配置和可选的 `APP_PORT`；自动生成 `DATABASE_URL`。            |
 
-| 问题                      | 排查方式                                                                             |
-| ------------------------- | ------------------------------------------------------------------------------------ |
-| 创建决策约 5 秒后返回 503 | 执行 db:check；检查数据库是否运行、地址/端口/密码是否匹配；WSL 环境检查 IP 与保活    |
-| 提示模型未配置或认证失败  | 检查服务端 DEEPSEEK_API_KEY，修改后重启应用；数据库功能不依赖模型密钥                |
-| 生产环境保存后列表为空    | 检查 HTTPS、Secure Cookie、访问域名是否变化，以及代理是否保留 Cookie                 |
-| 写操作返回 403            | 检查反向代理传递的 Host 与浏览器访问的 Origin 是否一致                               |
-| 迁移失败                  | 检查连接、数据库权限和已提交的 migrations；不要对有数据的数据库执行 reset            |
-| 端口或容器名冲突          | 检查已有 aiweb-postgres 和 5433；此仓库的容器名/卷名默认固定，同机多份实例需分别配置 |
+| 变量                | 用途                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `DATABASE_URL`      | 源码运行必填，指向应用实际可访问的 PostgreSQL；默认 Docker 部署由 Compose 自动生成。 |
+| `POSTGRES_USER`     | 数据库初始化用户，默认 `decision`。                                                  |
+| `POSTGRES_DB`       | 数据库初始化名称，默认 `decision`。                                                  |
+| `POSTGRES_PASSWORD` | 数据库初始化密码，必须设置长随机字母数字密码。                                       |
+| `DEEPSEEK_API_KEY`  | AI 生成功能所需密钥，留空不影响手动整理和保存。                                      |
+| `DEEPSEEK_MODEL`    | 模型名称，默认 `deepseek-chat`。                                                     |
+| `DEEPSEEK_BASE_URL` | 可选兼容服务地址，留空使用官方 DeepSeek；生产地址使用 HTTPS。                        |
+| `APP_PORT`          | Docker 应用在宿主机 `127.0.0.1` 上发布的端口，默认 `3000`。                          |
 
-## Git 管理与首次上传 GitHub
+数据库地址取决于**应用进程所在的位置**：
 
-### 1. 创建 GitHub 空仓库
+| 应用位置     | 数据库位置                    | `DATABASE_URL` 的主机与端口           |
+| ------------ | ----------------------------- | ------------------------------------- |
+| Windows 源码 | 本机可访问的数据库容器        | `127.0.0.1:5433`                      |
+| Windows 源码 | 另一台 Linux 主机上的数据库   | `<Windows可达的Linux主机IP>:5433`     |
+| 生产应用容器 | 同一 Compose 网络的数据库容器 | `postgres:5432`，自动配置             |
+| 源码         | 已有或托管 PostgreSQL         | 数据库实际地址及服务商要求的 TLS 参数 |
 
-在 GitHub 新建仓库，名称自定，例如 `ai-decision-studio`。选择 Public 或 Private；**首次创建时不勾选 README、.gitignore 或 License 初始化**，因为本地已有项目文件。复制仓库的 HTTPS 地址。
+容器内的 `127.0.0.1` 指向容器自身。源码运行时若手动填写的连接 URL 含有特殊字符密码，需要对密码进行 URL 编码；默认 Docker 部署约定使用字母数字密码，避免连接串转义。
 
-### 2. 第一次本地提交
+## 开发与验证
 
-本项目已经有 `.git`，不需要重复 `git init`。在 Windows PowerShell 执行：
+### 常用命令
 
-```powershell
-cd P:\chuanzhi\aiweb
-git status
+| 命令                       | 说明                                                                                         |
+| -------------------------- | -------------------------------------------------------------------------------------------- |
+| `npm run dev`              | 检查数据库后启动本地开发服务，默认 `127.0.0.1:3000`。                                        |
+| `npm run build`            | 生成 Prisma 客户端并构建生产版本。                                                           |
+| `npm run start`            | 运行已有生产构建，默认监听 `127.0.0.1:3000`。                                                |
+| `npm run db:generate`      | 生成 Prisma 客户端，首次克隆或模型变更后执行。                                               |
+| `npm run db:deploy`        | 应用已提交的迁移，用于初始化和发布。                                                         |
+| `npm run db:migrate`       | 开发时根据模型变更创建迁移，迁移文件需提交。                                                 |
+| `npm run db:check`         | 检查数据库认证、事务读写与中文往返，不保留测试记录。                                         |
+| `npm test`                 | 运行条件依赖传播和分支边界单元测试。                                                         |
+| `npm run typecheck`        | TypeScript 检查，首次需先生成 Prisma 客户端。                                                |
+| `npm run test:integration` | 基础接口验证，需要数据库和本地 3000 服务。                                                   |
+| `npm run test:workflows`   | 完整流程验证，需先构建、配置数据库并空出 3001、4010 端口；使用独立模型夹具，不调用真实模型。 |
+| `npm run test:live-ai`     | 真实模型验证，默认跳过；设置 `RUN_LIVE_AI_CHECK=1` 后调用，产生 API 费用。                   |
+
+真实模型验证还可设置 `RUN_LIVE_WORKFLOW_CHECK=1` 扩展到完整流程。请使用测试数据库执行接口和工作流验证，详细范围见 [验证记录](docs/verification.md)。
+
+### 目录结构
+
+```text
+src/app/                     页面与 HTTP 接口
+src/features/decision/       工作台组件、请求封装与保存队列
+src/domain/decision/         共享类型、校验与依赖规则
+src/server/ai/               模型接入、提示词与结构化生成
+src/server/services/         决策与生成工作流
+src/server/repositories/     数据访问、快照与版本更新
+src/styles/                  全局样式与工作台样式
+prisma/schema.prisma         数据模型
+prisma/migrations/           数据库迁移
+scripts/                     启动、数据库检查与集成验证
+tests/                       业务测试与模型夹具
+docs/                        需求、架构与验证文档
 ```
 
-如果尚未设置提交身份，先设置当前仓库的作者信息（邮箱可使用 GitHub 提供的 noreply 邮箱）：
+## 常见问题
 
-```powershell
-git config user.name "YOUR_NAME"
-git config user.email "YOUR_EMAIL"
-```
-
-提交前检查忽略规则，再暂存并查看文件清单：
-
-```powershell
-git check-ignore .env .env.database node_modules .next src/generated/prisma
-git add .
-git diff --cached --stat
-git status
-git commit -m "feat: initialize decision studio MVP"
-git branch -M main
-```
-
-应提交源代码、README、package-lock.json、Prisma schema/migrations、测试和配置示例。实际 `.env`、`.env.database`、node_modules、.next、数据库文件与生成客户端不应进入提交。`.gitignore` 只保护未跟踪文件，已经误提交的凭据需要另行移除并更换。
-
-### 3. 关联远程并推送
-
-将下面地址替换成刚创建仓库的实际地址：
-
-```powershell
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-git remote -v
-git push -u origin main
-```
-
-HTTPS 推送使用 Git Credential Manager 的浏览器登录，或按 GitHub 支持的方式使用个人访问令牌；不要把令牌写进远程 URL、README 或聊天。GitHub 账户密码不用于 Git 的 HTTPS 认证。已配置 SSH 的用户也可使用仓库的 SSH 地址。
-
-如果提示 `origin already exists`，先用 `git remote -v` 确认原地址；需要修改时使用 `git remote set-url origin 实际地址`，不要盲目重复添加或强制推送。
-
-### 4. 日常提交
-
-```powershell
-git status
-git diff
-git add README.md
-# 其他变更也按文件逐个暂存，或检查后使用 git add .
-git commit -m "docs: update deployment guide"
-git push
-```
-
-开发新功能时建议使用独立分支，例如 `git switch -c codex/improve-workbench`，首次推送分支使用 `git push -u origin codex/improve-workbench`。不要将真实用户内容写进测试样例。
-
-上述首次上传流程参考 [GitHub 官方本地项目上传说明](https://docs.github.com/en/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github) 和 [认证说明](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-authentication-to-github)。
+| 现象                                 | 排查方式                                                                                                                           |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 创建决策返回 503，或开发服务无法启动 | 源码运行执行 `npm run db:check`；Docker 部署执行 `docker compose exec app npm run db:check`。应用未启动时先查看容器日志。          |
+| 本地数据库端口或容器名冲突           | 检查 `aiweb-postgres` 容器和宿主机 `5433` 端口；调整端口后同步修改 `DATABASE_URL`。已有同名容器时先确认归属，不要重复创建。        |
+| Docker 应用连接不上数据库            | 检查 `.env` 的 `POSTGRES_*`、`docker compose ps` 和 `docker compose logs --tail=100 app postgres`。容器内应使用 `postgres:5432`。  |
+| 修改密码后仍认证失败                 | 已有数据卷不会因修改环境变量而重设密码，需同步数据库角色密码。不要通过删除数据卷解决认证问题。                                     |
+| AI 提示未配置、认证失败或余额不足    | 检查服务端密钥、模型名称和服务账户。源码修改配置后重启，容器修改配置后重新创建应用容器。                                           |
+| 生产环境保存后列表为空               | 检查是否使用 HTTPS、浏览器是否收到会话 Cookie、代理是否传递 Cookie，以及访问域名是否改变。                                         |
+| 写操作返回 403                       | 检查代理传递的 Host（含端口）是否与浏览器 Origin 匹配。                                                                            |
+| AI 请求超时或代理返回 504            | 检查模型服务连通性及代理超时；AI 总期限为 85 秒，代理建议至少 120 秒。                                                             |
+| 迁移失败，应用未启动                 | 查看 `docker compose logs --tail=100 app`，检查数据库连接、权限和迁移记录。修复后重跑启动命令；已有数据时不要执行 reset 或删除卷。 |
 
 ## 项目文档
 
 - [MVP 需求](docs/AI%20个人决策推演室%20·%20MVP%20需求文档.md)
-- [架构与目录](docs/architecture.md)
+- [架构与目录约定](docs/architecture.md)
 - [数据模型](docs/data-model.md)
 - [接口与 AI 工作流](docs/api-and-workflows.md)
 - [分阶段实施与验收](docs/implementation-plan.md)
-- [作者本机 WSL 数据库说明](docs/local-database.md)
 - [验证记录与已知限制](docs/verification.md)
