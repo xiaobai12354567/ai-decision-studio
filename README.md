@@ -117,7 +117,7 @@ flowchart LR
 | `POSTGRES_PASSWORD` | 脚本自动生成。数据库初始化后保持原值；修改配置文件不会重设数据库内的密码。 |
 | `DEEPSEEK_API_KEY`  | 首次提示输入，也可编辑文件填写；真实 AI 功能需要有效密钥。                 |
 | `DEEPSEEK_MODEL`    | 默认 `deepseek-chat`，按实际可用模型调整。                                 |
-| `DEEPSEEK_BASE_URL` | 默认留空使用官方服务；兼容网关使用 HTTPS。                                 |
+| `DEEPSEEK_BASE_URL` | 默认 `https://api.deepseek.com`；兼容网关使用 HTTPS。                       |
 | `APP_PORT`          | 默认 `3000`；端口被占用时改为 `3001` 等空闲端口，再运行脚本。              |
 
 `DATABASE_URL` 由 Compose 自动生成，容器通过 `postgres:5432` 连接数据库。若终端已设置同名 `POSTGRES_*` 或 `APP_PORT` 等环境变量，它们优先于配置文件，排查时应一并检查。
@@ -158,7 +158,7 @@ Copy-Item .env.database.example .env.database
 DATABASE_URL=postgresql://decision:YOUR_DATABASE_PASSWORD@127.0.0.1:5433/decision
 DEEPSEEK_API_KEY=YOUR_DEEPSEEK_API_KEY
 DEEPSEEK_MODEL=deepseek-chat
-DEEPSEEK_BASE_URL=
+DEEPSEEK_BASE_URL=https://api.deepseek.com
 ```
 
 ```powershell
