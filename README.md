@@ -30,6 +30,8 @@ sudo apt-get install -y docker-compose-plugin
 sudo docker compose version
 ```
 
+***注意:**如果docker使用的是Ubuntu 默认源,请使用 sudo apt-get install docker-compose-v2 安装.*
+
 ### 2. 获取项目并启动容器
 
 ```bash
@@ -191,5 +193,4 @@ npm run dev
 | 在线演示          | 暂未提供                   |
 | 5～8 分钟演示视频 | 待补充                     |
 | 技术文档 PDF      | 待补充                     |
-
 
