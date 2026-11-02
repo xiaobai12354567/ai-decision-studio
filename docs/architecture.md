@@ -48,9 +48,10 @@ aiweb/
 │  │  ├─ services/              # 决策、探索、总结三个业务服务起步
 │  │  ├─ repositories/          # Prisma 查询与原子写入
 │  │  ├─ ai/
-│  │  │  ├─ provider.ts         # DeepSeek 配置与调用入口
-│  │  │  ├─ prompts/            # 按生成任务组织的提示词
-│  │  │  └─ schemas.ts          # 模型候选输出，不直接等于数据库实体
+│  │  │  ├─ provider.ts         # 模型配置、请求、超时、重试与错误映射
+│  │  │  ├─ prompts.ts          # 公共规则、任务提示词、稳定标识与版本
+│  │  │  ├─ schemas.ts          # 模型候选输出，复用共享概况契约
+│  │  │  └─ workflows.ts        # 任务编排、上下文映射与可读引用处理
 │  │  ├─ session.ts             # 匿名会话创建与归属校验
 │  │  ├─ env.ts                 # 环境变量校验
 │  │  └─ db.ts                  # Prisma 客户端

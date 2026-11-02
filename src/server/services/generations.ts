@@ -7,12 +7,12 @@ import { db } from "../db";
 import { HttpError } from "../http";
 import { change } from "../repositories/decisions";
 import { dto, owned, type Snapshot, type Tx } from "../repositories/snapshot";
-import { clarify } from "../ai/provider";
+import { decisionPrompts } from "../ai/prompts";
+import * as schemas from "../ai/schemas";
 import * as ai from "../ai/workflows";
 
 type RunInput = GenerationInput | { kind: "clarify"; expectedRevision: number; requestKey: string };
 const json = (value: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(value));
-const promptVersion = "decision-mvp-v1";
 
 async function reserve(id: string, owner: string, input: RunInput) {
   return db().$transaction(
@@ -70,7 +70,7 @@ async function reserve(id: string, owner: string, input: RunInput) {
           scopeId: "scopeId" in input ? input.scopeId : null,
           baseRevision: input.expectedRevision,
           model: process.env.DEEPSEEK_MODEL || "deepseek-chat",
-          promptVersion,
+          promptVersion: decisionPrompts[input.kind].version,
           inputSnapshot: json(ai.context(decision)),
         },
       });
@@ -138,7 +138,7 @@ async function scenarioCreate(
   tx: Tx,
   decision: Snapshot,
   pathId: string,
-  data: ai.ScenariosOutput["scenarios"][number],
+  data: schemas.ScenariosOutput["scenarios"][number],
   revision: number,
   parentId?: string,
   depth = 0,
@@ -168,7 +168,7 @@ export async function generate(id: string, owner: string, input: RunInput) {
     let output: unknown;
     switch (input.kind) {
       case "clarify":
-        output = await clarify(snapshot.description, snapshot.conditions);
+        output = await ai.clarify(snapshot.description, snapshot.conditions);
         break;
       case "paths":
         output = await ai.generatePaths(snapshot);
@@ -236,7 +236,7 @@ async function apply(
   revision: number,
 ) {
   if (input.kind === "paths") {
-    const data = ai.pathsOutput.parse(output);
+    const data = schemas.pathsOutput.parse(output);
     if (new Set(data.paths.map((p) => p.title.replace(/\s/g, ""))).size !== data.paths.length)
       throw new HttpError(502, "生成路径重复，请重试。");
     for (const path of data.paths) {
@@ -258,7 +258,7 @@ async function apply(
       "已生成不同的选择路径，等待你探索和编辑。",
     );
   } else if (input.kind === "scenarios") {
-    const data = ai.scenariosOutput.parse(output);
+    const data = schemas.scenariosOutput.parse(output);
     for (const scenario of data.scenarios)
       await scenarioCreate(tx, decision, input.scopeId, scenario, revision);
     await change(
@@ -270,7 +270,7 @@ async function apply(
       input.scopeId,
     );
   } else if (input.kind === "branch") {
-    const data = ai.branchOutput.parse(output);
+    const data = schemas.branchOutput.parse(output);
     const path = decision.paths.find((p) => p.scenarios.some((s) => s.id === input.scopeId))!;
     const parent = path.scenarios.find((s) => s.id === input.scopeId)!;
     await scenarioCreate(
@@ -299,7 +299,7 @@ async function apply(
       parent.id,
     );
   } else if (input.kind === "refresh") {
-    const data = ai.refreshOutput.parse(output);
+    const data = schemas.refreshOutput.parse(output);
     exactIds(
       data.paths.map((p) => p.id),
       decision.paths.filter((p) => p.freshness === "stale").map((p) => p.id),
@@ -351,7 +351,7 @@ async function apply(
       await change(tx, decision.id, revision, "refresh", reason, id, before, content);
     }
   } else if (input.kind === "summary") {
-    const { actions, ...content } = ai.summaryOutput.parse(output);
+    const { actions, ...content } = schemas.summaryOutput.parse(output);
     if (
       content.inclinationPathId &&
       !decision.paths.some((p) => p.id === content.inclinationPathId)
